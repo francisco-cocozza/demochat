@@ -1,0 +1,86 @@
+# Deploy Demo Chat Application
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: demochat
+  labels:
+    service: demochat
+    app: demochat
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        service: demochat
+    spec:
+      imagePullSecrets:
+        - name: codefresh-generated-r.cfcr.io-cfcr-default
+      containers:
+      - image: r.cfcr.io/{{CF_ACCOUNT}}/demochat:latest
+        name: app
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: demochat
+    name: demochat
+  spec:
+    type: LoadBalancer
+    selector:
+      app: demochat
+    ports:
+    - name: "http"
+      port: 80
+      protocol: TCP
+      targetPort: 5000
+    selector:
+      service: demochat
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mongo
+  name: mongo
+spec:
+  type: ClusterIP
+  ports:
+  - name: "http"
+    port: 27017
+    protocol: TCP
+    targetPort: 27017
+  selector:
+    service: mongo
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: mongo
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        service: mongo
+    spec:
+      containers:
+      - args:
+        - mongod
+        - --smallfiles
+        image: mongo:latest
+        name: mongo
+        ports:
+        - containerPort: 27017
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /data/db
+          name: mongo-data
+      restartPolicy: Always
+      volumes:
+      - name: mongo-data
+        emptyDir: {}
