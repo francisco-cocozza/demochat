@@ -11,9 +11,9 @@ steps:
   clone:
     title: "Cloning repository"
     type: "git-clone"
-    repo: "sales-dev/sales-dev"
+    repo: "francisco-codefresh/demochat"
     revision: "${{CF_BRANCH}}"
-    git: "azure-devops"
+    git: "github-francisco"
     stage: "clone"
 
   build:
