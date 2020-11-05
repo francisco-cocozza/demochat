@@ -71,6 +71,7 @@ steps:
   deploy:
     title: "Deploying Helm chart to AKS"
     type: "helm"
+    working_directory: "${{clone}}"
     arguments:
       helm_version: "3.0.3"
       chart_name: "demochat"
