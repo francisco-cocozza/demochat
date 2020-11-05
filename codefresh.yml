@@ -54,8 +54,8 @@ steps:
     type: "push"
     candidate: "${{build}}"
     tag: "${{CF_BRANCH_TAG_NORMALIZED}}"
-    image_name: "sales-dev/demochat"
-    registry: "acr"
+    image_name: "franciscocodefresh/demochat"
+    registry: "dockerhub-fc"
     stage: "push"
 
   package:
@@ -81,4 +81,5 @@ steps:
       namespace: "demochat"
       custom_values:
         - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}"
+        - "image.repository=docker.io/franciscocodefresh/demochat"
     stage: "deploy"
