@@ -59,12 +59,11 @@ steps:
     stage: "push"
 
   package:
-    title: "Packing/Pushing Helm Chart to ACR"
+    title: "Packing/Pushing Helm Chart to CF HELM REPO"
     type: "helm"
     arguments:
       helm_version: "3.0.3"
       action: "push"
-      kube_context: "sales-dev-aks@BizSpark Plus"
       chart_name: "${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}/helm/demochat"
     stage: "package"
 
@@ -75,7 +74,6 @@ steps:
     arguments:
       helm_version: "3.0.3"
       chart_name: "demochat"
-      chart_version: "0.2.0"
       release_name: "demochat"
       kube_context: "sales-dev@codefresh-sa"
       namespace: "demochat"
