@@ -50,7 +50,7 @@ steps:
     stage: "test"
 
   push:
-    title: "Pushing Docker image to ACR"
+    title: "Pushing Docker image to DH"
     type: "push"
     candidate: "${{build}}"
     tag: "${{CF_BRANCH_TAG_NORMALIZED}}"
@@ -68,7 +68,7 @@ steps:
     stage: "package"
 
   deploy:
-    title: "Deploying Helm chart to AKS"
+    title: "Deploying Helm chart to GKE"
     type: "helm"
     working_directory: "${{clone}}"
     arguments:
