@@ -75,8 +75,8 @@ steps:
       helm_version: "3.0.3"
       chart_name: "demochat"
       release_name: "demochat"
-      kube_context: "sales-dev-aks@BizSpark Plus"
-      namespace: "default"
+      kube_context: "sales-dev@codefresh-sa"
+      namespace: "demochat"
       custom_values:
         - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}"
     stage: "deploy"
