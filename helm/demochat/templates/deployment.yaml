@@ -7,6 +7,10 @@ metadata:
     app: {{.Release.Name}}
 spec:
   replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}
+      release: {{.Release.Name}}
   template:
     metadata:
       labels:
