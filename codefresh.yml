@@ -11,7 +11,7 @@ steps:
   clone:
     title: "Cloning repository"
     type: "git-clone"
-    repo: "francisco-codefresh/demochat"
+    repo: "${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}"
     revision: "${{CF_BRANCH}}"
     git: "github-francisco"
     stage: "clone"
@@ -50,33 +50,34 @@ steps:
     stage: "test"
 
   push:
-    title: "Pushing Docker image to ACR"
+    title: "Pushing Docker image to DH"
     type: "push"
     candidate: "${{build}}"
     tag: "${{CF_BRANCH_TAG_NORMALIZED}}"
-    image_name: "sales-dev/demochat"
-    registry: "acr"
+    image_name: "franciscocodefresh/demochat"
+    registry: "dockerhub-fc"
     stage: "push"
 
   package:
-    title: "Packing/Pushing Helm Chart to ACR"
+    title: "Packing/Pushing Helm Chart to CF HELM REPO"
     type: "helm"
     arguments:
       helm_version: "3.0.3"
       action: "push"
-      kube_context: "sales-dev-aks@BizSpark Plus"
       chart_name: "${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}/helm/demochat"
     stage: "package"
 
   deploy:
-    title: "Deploying Helm chart to AKS"
+    title: "Deploying Helm chart to GKE"
     type: "helm"
+    working_directory: "${{clone}}"
     arguments:
       helm_version: "3.0.3"
       chart_name: "demochat"
       release_name: "demochat"
-      kube_context: "sales-dev-aks@BizSpark Plus"
-      namespace: "default"
+      kube_context: "sales-dev@codefresh-sa"
+      namespace: "demochatv2"
       custom_values:
         - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}"
+        - "image.repository=docker.io/franciscocodefresh/demochat"
     stage: "deploy"
