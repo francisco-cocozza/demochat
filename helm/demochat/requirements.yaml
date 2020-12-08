@@ -1,4 +1,7 @@
-#dependencies:
+dependencies:
+- name: mongo
+  version: "0.2.0"
+  repository: "file://dependency_chart/mongo"
 #- name: mongo
 #  version: "0.2.0"
 #  repository: "https://razielt77.github.com/helm"

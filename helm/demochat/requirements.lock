@@ -1,4 +1,8 @@
-#dependencies:
+dependencies:
+- name: mongo
+  repository: file://dependency_chart/mongo
+  version: 0.2.0
+
 #- condition: ""
 #  enabled: false
 #  import-values: null
