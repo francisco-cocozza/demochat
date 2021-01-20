@@ -65,6 +65,7 @@ steps:
       helm_version: "3.0.3"
       action: "push"
       chart_name: "${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}/helm/demochat"
+      credentials_in_arguments: true
     stage: "package"
 
   deploy:
