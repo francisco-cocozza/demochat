@@ -78,6 +78,7 @@ steps:
       release_name: "demochat"
       kube_context: "sales-dev@codefresh-sa"
       namespace: "demochatv2"
+      credentials_in_arguments: true
       custom_values:
         - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}"
         - "image.repository=docker.io/franciscocodefresh/demochat"
