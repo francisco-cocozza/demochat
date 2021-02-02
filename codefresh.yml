@@ -45,8 +45,8 @@ steps:
     image: "codefresh/cf-docker-test-reporting"
     working_directory: "${{clone}}"
     environment:
-      - "BUCKET_NAME=amazon-francisco"
-      - "CF_STORAGE_INTEGRATION=sales-dev-azure-blob"
+      - "BUCKET_NAME=cf-elastic-beanstalk-test"
+      - "CF_STORAGE_INTEGRATION=amazon-francisco"
     stage: "test"
 
   push:
