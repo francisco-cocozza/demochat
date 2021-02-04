@@ -21,9 +21,9 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{.Release.Name}}
+  name: {{.Release.Name}}-preview
   labels:
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}-preview"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
     app: {{.Release.Name}}
     release: {{.Release.Name}}
     heritage: Tiller
