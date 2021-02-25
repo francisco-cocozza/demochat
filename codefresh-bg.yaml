@@ -1,0 +1,244 @@
+version: "1.0"
+stages:
+  - "clone & build"
+  - "test"
+  - "push & package"
+  - "deploy to stg"
+  - "deploy to prod"
+
+steps:
+
+  clone:
+    title: "Cloning repository"
+    type: "git-clone"
+    repo: "${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}"
+    revision: "${{CF_REVISION}}"
+    git: "github-francisco"
+    stage: "clone & build"
+
+  build:
+    title: "Building Docker image"
+    type: "build"
+    image_name: "sales-dev/demochat"
+    working_directory: "${{clone}}"
+    tag: "${{CF_BRANCH_TAG_NORMALIZED}}"
+    dockerfile: "Dockerfile"
+    stage: "clone & build"
+
+  unit_test:
+    title: "Running Unit Tests"
+    image: "${{build}}"
+    working_directory: "${{clone}}"
+    commands:
+      - "yarn install --silent"
+      - "yarn test"
+    services:
+      composition:
+        my_mongo_Service:
+          image: "mongo:latest"
+          ports:
+            - 27017
+    stage: "test"
+    
+  unit_test_reporting_step:
+    title: "Generating test reporting"
+    image: "codefresh/cf-docker-test-reporting"
+    working_directory: "${{clone}}"
+    environment:
+      - "BUCKET_NAME=cf-elastic-beanstalk-test"
+      - "CF_STORAGE_INTEGRATION=amazon-francisco"
+    stage: "test"
+
+  push:
+    title: "Pushing Docker image to DH"
+    type: "push"
+    candidate: "${{build}}"
+    tag: "${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+    image_name: "franciscocodefresh/demochat"
+    registry: "dockerhub-fc"
+    stage: "push & package"
+
+  package:
+    title: "Packing/Pushing Helm Chart to CF HELM REPO"
+    type: "helm"
+    arguments:
+      helm_version: "3.0.3"
+      action: "push"
+      chart_name: "${{CF_VOLUME_PATH}}/${{CF_REPO_NAME}}/helm/demochat"
+    stage: "push & package"
+
+  deploy_to_staging:
+    title: "Deploying Helm Chart"
+    type: "helm"
+    working_directory: "${{clone}}"
+    arguments:
+      helm_version: "3.0.3"
+      chart_name: "demochat"
+      chart_version: "0.1.1"
+      release_name: "demochat-stg"
+      kube_context: "sales-dev@codefresh-sa"
+      namespace: "demochat-stg"
+      custom_values:
+        - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+        - "image.repository=docker.io/franciscocodefresh/demochat"
+        - "replicaCount=2"
+    when:
+      branch:
+        only:
+          - master
+          - main
+    stage: "deploy to stg"
+    
+  test_staging_deployment:
+    title: "Testing the deployment (PREVIEW)"
+    image: codefresh/kubectl
+    fail_fast: false
+    commands:
+      - export SERVICE_IP=$(kubectl get svc --namespace demochat-stg demochat-stg-preview -o jsonpath='{.status.loadBalancer.ingress[0].ip}{":"}{.spec.ports[0].port}')
+      - echo $SERVICE_IP
+      - curl $SERVICE_IP --max-time 15
+      - export HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" $SERVICE_IP)
+      - if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+    retry:
+      maxAttempts: 2
+      delay: 5
+      exponentialFactor: 2
+    when:
+      branch:
+        only:
+          - master
+          - main
+    stage: "deploy to stg"
+  
+  
+  rollback_stg:
+    title: "Rollbacking release and failing the build"
+    type: helm
+    arguments:
+      action: auth
+      kube_context: "sales-dev@codefresh-sa"
+      helm_version: "3.0.3"
+      commands:
+        - helm history demochat-stg -n demochat-stg
+        - helm rollback demochat-stg 0 -n demochat-stg
+        - exit 1
+    when:
+      branch:
+        only:
+          - master 
+          - main
+      steps:
+       - name: test_staging_deployment
+         on:
+           - failure
+    stage: "deploy to stg"   
+    
+  promote_stg_rollout:
+    title: "Promoting rollout"
+    type: argocd-rollout
+    arguments:
+      k8s_context: '${{K8S_CONTEXT}}'
+      rollout_name: 'demochat-stg'
+      rollout_namespace: 'demochat-stg'
+    when:
+      branch:
+        only:
+          - master 
+          - main
+      steps:
+       - name: test_staging_deployment
+         on:
+           - success
+    stage: "deploy to stg" 
+    
+  check_stg_rollout:
+    title: Getting rollout info
+    image: codefresh/cf-argo-plugin:0.2.1
+    commands:
+      - kubectl config use-context "sales-dev@codefresh-sa"
+      - kubectl argo rollouts -n demochat-stg get rollout demochat-stg
+    when:
+      branch:
+        only:
+          - master 
+          - main
+    stage: "deploy to stg"    
+    
+  approve_production_deployment:
+    type: pending-approval
+    title: Deploy to Production environment?
+    when:
+      branch:
+        only:
+          - master 
+          - main
+    stage: "deploy to prod"
+    
+  deploy_to_production:
+    title: "Deploying Helm Chart"
+    type: "helm"
+    working_directory: "${{clone}}"
+    arguments:
+      helm_version: "3.0.3"
+      chart_name: "demochat"
+      chart_version: "0.1.1"
+      release_name: "demochat-prod"
+      kube_context: "sales-dev@codefresh-sa"
+      namespace: "demochat-prod"
+      custom_values:
+        - "image.tag=${{CF_BRANCH_TAG_NORMALIZED}}-${{CF_SHORT_REVISION}}"
+        - "image.repository=docker.io/franciscocodefresh/demochat"
+        - "replicaCount=3"
+    when:
+      branch:
+        only:
+          - master
+          - main
+    stage: "deploy to prod"
+
+  test_production_deployment:
+    title: "Testing the deployment (PREVIEW)"
+    image: codefresh/kubectl
+    commands:
+      - export SERVICE_IP=$(kubectl get svc --namespace demochat-prod demochat-prod-preview -o jsonpath='{.status.loadBalancer.ingress[0].ip}{":"}{.spec.ports[0].port}')
+      - echo $SERVICE_IP
+      - curl $SERVICE_IP --max-time 15
+      - export HTTP_CODE=$(curl -L -s -o /dev/null -w "%{http_code}" $SERVICE_IP)
+      - if [ "$HTTP_CODE" != "200" ]; then exit 1; fi
+    when:
+      branch:
+        only:
+          - master
+          - main
+    retry:
+      maxAttempts: 2
+      delay: 5
+      exponentialFactor: 2
+    stage: "deploy to prod"
+
+  promote_prod_rollout:
+    title: "Promoting rollout"
+    type: argocd-rollout
+    arguments:
+      k8s_context: '${{K8S_CONTEXT}}'
+      rollout_name: 'demochat-prod'
+      rollout_namespace: 'demochat-prod'
+    when:
+      branch:
+        only:
+          - master 
+          - main
+    stage: "deploy to prod" 
+          
+  check_prod_rollout:
+    title: Getting rollout info
+    image: codefresh/cf-argo-plugin:0.2.1
+    commands:
+      - kubectl config use-context "sales-dev@codefresh-sa"
+      - kubectl argo rollouts -n demochat-prod get rollout demochat-prod
+    when:
+      branch:
+        only:
+          - master 
+          - main
+    stage: "deploy to prod"
